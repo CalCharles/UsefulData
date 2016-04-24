@@ -7,27 +7,26 @@ import cv2
 import numpy as np
 import os
 
-
-def netify_image(net, model_path, layer, image, name):
-	sess = net.load(var_path = model_path)
-	print image
+def vectorize_image(image):
 	img = cv2.resize(cv2.imread(image), (250,250))
-	print img
 	im = inputdata.im2tensor(img, channels = 3)
 
 	imshape = im.shape
 	im = np.reshape(im, (-1, imshape[0], imshape[1], imshape[2]))
 
+def netify_image(sess, layer, im, name):
 	with sess.as_default():
 		result = sess.run(layer, feed_dict={net.x:im})
 		np.savetxt(name, result)
-	sess.close()
+	
 
 def generate_rollout_values(net, model_path, layer, rollout_paths, destination):
+	sess = net.load(var_path = model_path)
 	for folder in os.listdir(rollout_paths):
 		for image in os.listdir(rollout_paths + "/" + folder):
-			print image
-			netify_image(net, model_path, layer, rollout_paths+ "/" + folder + "/" + image, destination + "/" + image + "_featurized.m")
+			im = vectorize_image(rollout_paths+ "/" + folder + "/" + image)
+			netify_image(sess, layer, im, destination + "/" + image + "_featurized.m")
+	sess.close()
 
 def extract_rollout_data(rollout_paths="./../data/traindata", name = "/../data/featurized_images/"):
 	states = []
