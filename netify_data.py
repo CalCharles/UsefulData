@@ -13,6 +13,7 @@ def vectorize_image(image):
 
 	imshape = im.shape
 	im = np.reshape(im, (-1, imshape[0], imshape[1], imshape[2]))
+	return im	
 
 def netify_image(sess, layer, im, name):
 	with sess.as_default():
@@ -24,11 +25,14 @@ def generate_rollout_values(net, model_path, layer, rollout_paths, destination):
 	sess = net.load(var_path = model_path)
 	for folder in os.listdir(rollout_paths):
 		for image in os.listdir(rollout_paths + "/" + folder):
-			im = vectorize_image(rollout_paths+ "/" + folder + "/" + image)
-			netify_image(sess, layer, im, destination + "/" + image + "_featurized.m")
+			if image.find('.jpg') != -1:
+				print image
+				im = vectorize_image(rollout_paths+ "/" + folder + "/" + image)
+				image = image[:image.find('.jpg')]
+				netify_image(sess, layer, im, destination + "/" + image + "_featurized.m")
 	sess.close()
 
-def extract_rollout_data(rollout_paths="./../data/traindata", name = "/../data/featurized_images/"):
+def extract_rollout_data(rollout_paths="./../data/traindata", name = "/../data/featurizedImages/"):
 	states = []
 	for folder in os.listdir(rollout_paths):
 		for image in os.listdir(rollout_paths + "/" + folder):
@@ -40,4 +44,4 @@ def extract_rollout_data(rollout_paths="./../data/traindata", name = "/../data/f
 
 
 net =  net6.NetSix()
-generate_rollout_values(net, "./../data/net6_04-08-2016_14h46m42s.ckpt", net.h_fc1, "./../data/traindata", "./../data/featurized_images")
+generate_rollout_values(net, "./../data/net6_04-08-2016_14h46m42s.ckpt", net.h_fc1, "./../data/traindata", "./../data/featurizedImages")
