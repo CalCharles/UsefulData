@@ -2,7 +2,6 @@ import math
 import random
 import numpy as np
 import IPython
-import cPickle as pickle 
 from numpy import linalg as LA
 from sklearn import svm 
 from sklearn import preprocessing  
@@ -11,12 +10,16 @@ from sklearn import metrics
 from scipy.sparse import csr_matrix
 from scipy.sparse import vstack
 
+import netify_data as net_data
+
 import sys
+import tensorflow as tf
 
 # Make sure that caffe is on the python path:
 sys.path.append('/home/wesley/caffe/python')
 
-import caffe
+# import cPickle as pickle 
+# import caffe
 import os
 
 import random
@@ -37,132 +40,144 @@ class Learner():
 	neural = False
 
 	# Assumes current directory is "RL/"
-	NET_SUBDIR = os.getcwd() + '/net/'
-	SOLVER_FILE = os.path.join(NET_SUBDIR, 'net_solver.prototxt')
-	SOLVER_FILE_FT = os.path.join(NET_SUBDIR, 'net_solver_ft.prototxt')
-	MODEL_FILE = os.path.join(NET_SUBDIR, 'net_model.prototxt')
-	TRAINED_MODEL = os.path.join(os.getcwd(), '_iter_1000.caffemodel')
+	###* MARKED FOR DELETION
+	# NET_SUBDIR = os.getcwd() + '/net/'
+	# SOLVER_FILE = os.path.join(NET_SUBDIR, 'net_solver.prototxt')
+	# SOLVER_FILE_FT = os.path.join(NET_SUBDIR, 'net_solver_ft.prototxt')
+	# MODEL_FILE = os.path.join(NET_SUBDIR, 'net_model.prototxt')
+	# TRAINED_MODEL = os.path.join(os.getcwd(), '_iter_1000.caffemodel')
 
-	def Load(self,gamma = 1e-3, retrain_net=False):
-		self.sup_states = pickle.load(open('states.p','rb'))
+	def Load(self,gamma = 1e-3):
+		'''
+		Assumes the neural net is already trained
+		Assumes netify_data has already been run
+		Simply loads the data outputted by netify_data
+		if paths do not resolve, they can be changed in the netify_data code
+		'''
+
+		self.sup_states = net_data.extract_rollout_data()
 		self.trainSupport()
-		if self.neural:
-			if retrain_net:
-				self.trainModel(retrain_net=retrain_net)
 
-		else:
-			self.Actions = pickle.load(open('actions.p','rb'))
-			self.Weights = np.zeros(self.Actions.shape)+1
-			self.gamma = gamma
-			self.trainModel(self.States,self.Actions)
+		###* MARKED FOR DELETION
+		# if self.neural:
+		# 	if retrain_net:
+		# 		self.trainModel(retrain_net=retrain_net)
 
-		
-	def clearModel(self):
-		self.States = pickle.load(open('states.p','rb'))
-		self.Actions = pickle.load(open('actions.p','rb')) 
-		self.Weights = np.zeros(self.Actions.shape)+1
+		# else:
+		# 	self.Actions = pickle.load(open('actions.p','rb'))
+		# 	self.Weights = np.zeros(self.Actions.shape)+1
+		# 	self.gamma = gamma
+		# 	self.trainModel(self.States,self.Actions)
 
-	def split_training_test(self, States, Action):
-		"""
-		Splits the states/action pairs into
-		training/test sets of 80/20 percent.
-		"""
-		total_size = len(States)
-		train_size = int(total_size * 0.8)
+	###* MARKED FOR DELETION
+	# model generation is handled elsewhere
+	# splitting the sets is unaffected
+	# def clearModel(self):
+		# self.States = pickle.load(open('states.p','rb'))
+		# self.Actions = pickle.load(open('actions.p','rb')) 
+		# self.Weights = np.zeros(self.Actions.shape)+1
 
-		train_indices = random.sample([i for i in range(total_size)], train_size)
-		test_indices = [i for i in range(total_size) if i not in train_indices]
+	# def split_training_test(self, States, Action):
+	# 	"""
+	# 	Splits the states/action pairs into
+	# 	training/test sets of 80/20 percent.
+	# 	"""
+	# 	total_size = len(States)
+	# 	train_size = int(total_size * 0.8)
 
-		train_states = np.array([np.array(States[i]).astype(np.float32) for i in train_indices])
-		train_actions = np.array([Action[i] for i in train_indices]).astype(np.float32)
-		test_states = np.array([np.array(States[i]).astype(np.float32) for i in test_indices])
-		test_actions = np.array([Action[i] for i in test_indices]).astype(np.float32)
+	# 	train_indices = random.sample([i for i in range(total_size)], train_size)
+	# 	test_indices = [i for i in range(total_size) if i not in train_indices]
 
-		return train_states, train_actions, test_states, test_actions
+	# 	train_states = np.array([np.array(States[i]).astype(np.float32) for i in train_indices])
+	# 	train_actions = np.array([Action[i] for i in train_indices]).astype(np.float32)
+	# 	test_states = np.array([np.array(States[i]).astype(np.float32) for i in test_indices])
+	# 	test_actions = np.array([Action[i] for i in test_indices]).astype(np.float32)
 
-	def output_images(self, States, Action):
-		"""
-		Downsamples the states twice.
-		Outputs the given states/actions into
-		image files for neural net training in Caffe.
-		"""
-		downsampled_states = [cv2.pyrDown((cv2.pyrDown(img))) for img in States]
+	# 	return train_states, train_actions, test_states, test_actions
+
+	# def output_images(self, States, Action):
+	# 	"""
+	# 	Downsamples the states twice.
+	# 	Outputs the given states/actions into
+	# 	image files for neural net training in Caffe.
+	# 	"""
+	# 	downsampled_states = [cv2.pyrDown((cv2.pyrDown(img))) for img in States]
 	
-		train_states, train_actions, test_states, test_actions = \
-			self.split_training_test(downsampled_states, Action)
+	# 	train_states, train_actions, test_states, test_actions = \
+	# 		self.split_training_test(downsampled_states, Action)
 
-		self.sup_states = train_states
+	# 	self.sup_states = train_states
 
-		# train/test.txt should be a list of image files / actions to be read
-		with open(os.path.join(self.NET_SUBDIR, 'train.txt'), 'w') as f:
-			for i in range(len(train_states)):
-				train_filename = self.NET_SUBDIR + 'train_images/' + 'train_img_{0}.png'.format(i)
-				cv2.imwrite(train_filename, train_states[i])
-				f.write(train_filename + " " + str(int(train_actions[i])) + '\n')
+	# 	# train/test.txt should be a list of image files / actions to be read
+	# 	with open(os.path.join(self.NET_SUBDIR, 'train.txt'), 'w') as f:
+	# 		for i in range(len(train_states)):
+	# 			train_filename = self.NET_SUBDIR + 'train_images/' + 'train_img_{0}.png'.format(i)
+	# 			cv2.imwrite(train_filename, train_states[i])
+	# 			f.write(train_filename + " " + str(int(train_actions[i])) + '\n')
 
-		with open(os.path.join(self.NET_SUBDIR, 'test.txt'), 'w') as f:
-			for i in range(len(test_states)):
-				test_filename = self.NET_SUBDIR + 'test_images/' + 'test_img_{0}.png'.format(i)
-				cv2.imwrite(test_filename, test_states[i])
-				f.write(test_filename + " " + str(int(test_actions[i])) + '\n')
+	# 	with open(os.path.join(self.NET_SUBDIR, 'test.txt'), 'w') as f:
+	# 		for i in range(len(test_states)):
+	# 			test_filename = self.NET_SUBDIR + 'test_images/' + 'test_img_{0}.png'.format(i)
+	# 			cv2.imwrite(test_filename, test_states[i])
+	# 			f.write(test_filename + " " + str(int(test_actions[i])) + '\n')
 
 
 
-	def trainModel(self, States=None, Action=None, fineTune = False, retrain_net=False):
-		"""
-		Trains model on given states and actions.
-		Uses neural net or SVM based on global
-		settings.
-		"""
-		if not retrain_net:
-			States, Action = States[1:], Action[1:]
-			print "States.shape"
-			print States.shape
-			print "Action.shape"
-			print Action.shape
+	# def trainModel(self, States=None, Action=None, fineTune = False, retrain_net=False):
+	# 	"""
+	# 	Trains model on given states and actions.
+	# 	Uses neural net or SVM based on global
+	# 	settings.
+	# 	"""
+	# 	if not retrain_net:
+	# 		States, Action = States[1:], Action[1:]
+	# 		print "States.shape"
+	# 		print States.shape
+	# 		print "Action.shape"
+	# 		print Action.shape
 
-			Action = np.ravel(Action)
+	# 		Action = np.ravel(Action)
 
-		if self.neural:
-			if not retrain_net:
-				# Neural net implementation
-				self.output_images(States, Action)
-			# Change to "caffe.set_mode_gpu() for GPU mode"
-			caffe.set_mode_cpu()
+	# 	if self.neural:
+	# 		if not retrain_net:
+	# 			# Neural net implementation
+	# 			self.output_images(States, Action)
+	# 		# Change to "caffe.set_mode_gpu() for GPU mode"
+	# 		caffe.set_mode_cpu()
 
-			solver = caffe.get_solver(self.SOLVER_FILE)
-			if(fineTune):
-				solver = caffe.get_solver(self.SOLVER_FILE_FT)
-				solver.net.copy_from(self.TRAINED_MODEL)
-				self.TRAINED_MODEL = os.path.join(os.getcwd(), '_iter_500.caffemodel')
-			solver.solve()
+	# 		solver = caffe.get_solver(self.SOLVER_FILE)
+	# 		if(fineTune):
+	# 			solver = caffe.get_solver(self.SOLVER_FILE_FT)
+	# 			solver.net.copy_from(self.TRAINED_MODEL)
+	# 			self.TRAINED_MODEL = os.path.join(os.getcwd(), '_iter_500.caffemodel')
+	# 		solver.solve()
 			
-		else:
-			# Original SVC implementation
-			self.clf = svm.LinearSVC()
-			#self.clf.class_weight = 'auto' 
-			self.clf.C = 1e-2
+	# 	else:
+	# 		# Original SVC implementation
+	# 		self.clf = svm.LinearSVC()
+	# 		#self.clf.class_weight = 'auto' 
+	# 		self.clf.C = 1e-2
 			
-			self.clf.fit(States[:,:,0], Action)
+	# 		self.clf.fit(States[:,:,0], Action)
 
-		IPython.embed()
+	# 	IPython.embed()
 
-		"""
-		# Original novel implementation
-		self.novel = svm.OneClassSVM()
+	# 	"""
+	# 	# Original novel implementation
+	# 	self.novel = svm.OneClassSVM()
 
-		self.novel.gamma = self.gamma
-		self.novel.nu = 1e-3
-		self.novel.kernel = 'rbf'
-		self.novel.verbose = False
-		self.novel.shrinking = False
-		self.novel.max_iter = 3000
+	# 	self.novel.gamma = self.gamma
+	# 	self.novel.nu = 1e-3
+	# 	self.novel.kernel = 'rbf'
+	# 	self.novel.verbose = False
+	# 	self.novel.shrinking = False
+	# 	self.novel.max_iter = 3000
 
-		self.novel.fit(self.supStates)
+	# 	self.novel.fit(self.supStates)
 
-		if (self.verbose):
-			self.debugPolicy(States, Action)
-		"""
+	# 	if (self.verbose):
+	# 		self.debugPolicy(States, Action)
+	# 	"""
 	
 
 	def getScoreNovel(self,States):
@@ -197,27 +212,29 @@ class Learner():
 	def getPrecision(self):
 		return self.precision
 
-	def processState(self):
-		net = caffe.Net (self.MODEL_FILE,self.TRAINED_MODEL,caffe.TEST)
+###* MARKED FOR DELETION
+	# THis is implemented in netify_data
+	# def processState(self):
+	# 	net = caffe.Net (self.MODEL_FILE,self.TRAINED_MODEL,caffe.TEST)
 		
 		
-		sup_states_t = np.zeros((len(self.sup_states),40))
+	# 	sup_states_t = np.zeros((len(self.sup_states),40))
 
-		for i in range(len(self.sup_states)):
-			# Caffe takes in 4D array inputs.
-			data4D = np.zeros([1,3,125,125])
+	# 	for i in range(len(self.sup_states)):
+	# 		# Caffe takes in 4D array inputs.
+	# 		data4D = np.zeros([1,3,125,125])
 
-			# Fill in last 3 dimensions
+	# 		# Fill in last 3 dimensions
 
-			data4D[0,0,:,:] = self.sup_states[i,:,:,0]
-			data4D[0,1,:,:] = self.sup_states[i,:,:,1]
-			data4D[0,2,:,:] = self.sup_states[i,:,:,2]
+	# 		data4D[0,0,:,:] = self.sup_states[i,:,:,0]
+	# 		data4D[0,1,:,:] = self.sup_states[i,:,:,1]
+	# 		data4D[0,2,:,:] = self.sup_states[i,:,:,2]
 
-			net.blobs['data'].data[...] = data4D
-			net.forward(start='conv1',end='fc1')
-			sup_states_t[i,:] = net.blobs['fc1'].data
+	# 		net.blobs['data'].data[...] = data4D
+	# 		net.forward(start='conv1',end='fc1')
+	# 		sup_states_t[i,:] = net.blobs['fc1'].data
 		
-		self.sup_states = sup_states_t
+	# 	self.sup_states = sup_states_t
 		
 	def trainSupport(self):
 
@@ -245,70 +262,80 @@ class Learner():
  	def getAction(self, state):
 		"""
 		Returns a prediction given the input state.
-		Uses neural net or SVM based on global
-		settings.
+		Uses the current net generated from the prior training (tensorflow)
 		"""
-		if self.neural:
-			net = caffe.Net (self.MODEL_FILE,self.TRAINED_MODEL,caffe.TEST)
+		TODO 
 
-			# Caffe takes in 4D array inputs.
-			data4D = np.zeros([1,3,125,125])
+		###* MARKED FOR DELETION
+		#replaced with tensorflow code
+		# if self.neural:
+		# 	net = caffe.Net (self.MODEL_FILE,self.TRAINED_MODEL,caffe.TEST)
 
-			# Fill in last 3 dimensions
+		# 	# Caffe takes in 4D array inputs.
+		# 	data4D = np.zeros([1,3,125,125])
+
+		# 	# Fill in last 3 dimensions
 			
-			img = cv2.pyrDown((cv2.pyrDown(state)))
+		# 	img = cv2.pyrDown((cv2.pyrDown(state)))
 
-			data4D[0,0,:,:] = img[:,:,0]
-			data4D[0,1,:,:] = img[:,:,1]
-			data4D[0,2,:,:] = img[:,:,2]
-			#cv2.imshow('img',img)
-			# Forward call creates a dictionary corresponding to the layers
+		# 	data4D[0,0,:,:] = img[:,:,0]
+		# 	data4D[0,1,:,:] = img[:,:,1]
+		# 	data4D[0,2,:,:] = img[:,:,2]
+		# 	#cv2.imshow('img',img)
+		# 	# Forward call creates a dictionary corresponding to the layers
 
-			pred_dict = net.forward_all(data=data4D)
-			# 'prob' layer contains actions and their respective probabilities
-			prediction = pred_dict['prob'].argmax()
-			print pred_dict
+		# 	pred_dict = net.forward_all(data=data4D)
+		# 	# 'prob' layer contains actions and their respective probabilities
+		# 	prediction = pred_dict['prob'].argmax()
+		# 	print pred_dict
 
-			return [prediction]
-		else:
+		# 	return [prediction]
+		# else:
 			
-			img = cv2.pyrDown((cv2.pyrDown(state)))
-			winSize = (32,32)
-			blockSize = (16,16)
-			blockStride = (8,8)
-			cellSize = (8,8)
-			nbins = 9
-			derivAperture = 1
-			winSigma = 4.
-			histogramNormType = 0
-			L2HysThreshold = 2.0000000000000001e-01
-			gammaCorrection = 0
-			nlevels = 64
-			hog = cv2.HOGDescriptor(winSize,blockSize,blockStride,cellSize,nbins,derivAperture,winSigma,
-			                histogramNormType,L2HysThreshold,gammaCorrection,nlevels)
+		# 	img = cv2.pyrDown((cv2.pyrDown(state)))
+		# 	winSize = (32,32)
+		# 	blockSize = (16,16)
+		# 	blockStride = (8,8)
+		# 	cellSize = (8,8)
+		# 	nbins = 9
+		# 	derivAperture = 1
+		# 	winSigma = 4.
+		# 	histogramNormType = 0
+		# 	L2HysThreshold = 2.0000000000000001e-01
+		# 	gammaCorrection = 0
+		# 	nlevels = 64
+		# 	hog = cv2.HOGDescriptor(winSize,blockSize,blockStride,cellSize,nbins,derivAperture,winSigma,
+		# 	                histogramNormType,L2HysThreshold,gammaCorrection,nlevels)
 
-			state = hog.compute(img)
+		# 	state = hog.compute(img)
 		
-			return self.clf.predict(state.T)
+		# 	return self.clf.predict(state.T)
 
 	def askForHelp(self,img):
+		'''
+		Get the appropriate layer from the tensorflow net, and then apply it to the
+		input image. Predict the novelty based on the state
+		'''
+		TODO
 
-		net = caffe.Net (self.MODEL_FILE,self.TRAINED_MODEL,caffe.TEST)
-		data4D = np.zeros([1,3,125,125])
+		###* MARKED FOR DELETION
 
-		# Fill in last 3 dimensions
+		# net = caffe.Net (self.MODEL_FILE,self.TRAINED_MODEL,caffe.TEST)
+		# data4D = np.zeros([1,3,125,125])
+
+		# # Fill in last 3 dimensions
 		
-		img = cv2.pyrDown((cv2.pyrDown(img)))
+		# img = cv2.pyrDown((cv2.pyrDown(img)))
 
-		data4D[0,0,:,:] = img[:,:,0]
-		data4D[0,1,:,:] = img[:,:,1]
-		data4D[0,2,:,:] = img[:,:,2]
+		# data4D[0,0,:,:] = img[:,:,0]
+		# data4D[0,1,:,:] = img[:,:,1]
+		# data4D[0,2,:,:] = img[:,:,2]
 
-		net.blobs['data'].data[...] = data4D
-		net.forward(start='conv1',end='fc1')
-		state = net.blobs['fc1'].data
+		# net.blobs['data'].data[...] = data4D
+		# net.forward(start='conv1',end='fc1')
+		# state = net.blobs['fc1'].data
 		
-		state = self.scaler.transform(state)
+		# state = self.scaler.transform(state)
 		return self.novel.predict(state)
 
 	def getNumData(self): 
@@ -322,6 +349,7 @@ class Learner():
 		self.Actions = actions
 		self.Weights = np.zeros(actions.shape)+1
 		self.trainModel(self.States,self.Actions)
+
 
 	def updateModel(self,new_states,new_actions,weights):
 		print "UPDATING MODEL"
@@ -345,7 +373,8 @@ class Learner():
 
 		return matStates
 
-	def saveModel(self):
-		pickle.dump(self.sup_states,open('states.p','wb'))
+	###* MARKED FOR DELETION
+	# def saveModel(self):
+	# 	pickle.dump(self.sup_states,open('states.p','wb'))
 		
 
