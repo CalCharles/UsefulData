@@ -259,14 +259,14 @@ class Learner():
 		self.saveModel()
 
 
- 	def getAction(self, state):
-		"""
-		Returns a prediction given the input state.
-		Uses the current net generated from the prior training (tensorflow)
-		"""
-		TODO 
+	###* MARKED FOR DELETION
+ 	# def getAction(self, state):
+		# """
+		# Returns a prediction given the input state.
+		# Uses the current net generated from the prior training (tensorflow)
+		# """
+		
 
-		###* MARKED FOR DELETION
 		#replaced with tensorflow code
 		# if self.neural:
 		# 	net = caffe.Net (self.MODEL_FILE,self.TRAINED_MODEL,caffe.TEST)
@@ -313,10 +313,9 @@ class Learner():
 
 	def askForHelp(self,img):
 		'''
-		Get the appropriate layer from the tensorflow net, and then apply it to the
-		input image. Predict the novelty based on the state
+		Takes in an img already formatted to the appropriate layer of the tensorflow net
+		Predict the novelty based on the state
 		'''
-		TODO
 
 		###* MARKED FOR DELETION
 
@@ -336,7 +335,7 @@ class Learner():
 		# state = net.blobs['fc1'].data
 		
 		# state = self.scaler.transform(state)
-		return self.novel.predict(state)
+		return self.novel.predict(img)
 
 	def getNumData(self): 
 		return self.Actions.shape[0]
