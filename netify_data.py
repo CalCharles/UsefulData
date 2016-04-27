@@ -32,16 +32,20 @@ def generate_rollout_values(net, model_path, layer, rollout_paths, destination):
 				netify_image(sess, layer, im, destination + "/" + image + "_featurized.m")
 	sess.close()
 
-def extract_rollout_data(rollout_paths="./../data/traindata", name = "/../data/featurizedImages/"):
+def extract_rollout_data(rollout_paths="./../data/traindata", name = "./../data/featurizedImages/"):
 	states = []
 	for folder in os.listdir(rollout_paths):
 		for image in os.listdir(rollout_paths + "/" + folder):
-			path = name + "/" + image + "_featurized.m"
-			state += np.loadtxt(path)
-	return np.array(state)
+			if image.find('.jpg') != -1:
+				path = name  + image[:image.find('.jpg')] + "_featurized.m"
+				states.append(np.loadtxt(path))
+	return np.array(states)
 
 
 
 
 net =  net6.NetSix()
-generate_rollout_values(net, "./../data/net6_04-08-2016_14h46m42s.ckpt", net.h_fc1, "./../data/traindata", "./../data/featurizedImages")
+
+#generate_rollout_values(net, "./../data/net6_04-08-2016_14h46m42s.ckpt", net.h_fc1, "./../data/validationdata", "./../data/featurizedValidation")
+
+#generate_rollout_values(net, "./../data/net6_04-08-2016_14h46m42s.ckpt", net.h_fc1, "./../data/traindata", "./../data/featurizedImages")

@@ -47,7 +47,7 @@ class Learner():
 	# MODEL_FILE = os.path.join(NET_SUBDIR, 'net_model.prototxt')
 	# TRAINED_MODEL = os.path.join(os.getcwd(), '_iter_1000.caffemodel')
 
-	def Load(self,gamma = 1e-3):
+	def Load(self,gamma = 1e-3, nu = 1e-3):
 		'''
 		Assumes the neural net is already trained
 		Assumes netify_data has already been run
@@ -56,7 +56,9 @@ class Learner():
 		'''
 
 		self.sup_states = net_data.extract_rollout_data()
-		self.trainSupport()
+		# self.trainSupport()
+		self.gamma = gamma
+		self.nu = nu
 
 		###* MARKED FOR DELETION
 		# if self.neural:
@@ -238,16 +240,16 @@ class Learner():
 		
 	def trainSupport(self):
 
-		if(self.sup_states.shape[1] != 40):
-			self.processState()
+		#if(self.sup_states.shape[1] != 40):
+		#	self.processState()
 		
 		self.scaler = preprocessing.StandardScaler().fit(self.sup_states)
 		self.sup_states = self.scaler.transform(self.sup_states)
 		self.novel = svm.OneClassSVM()
 		
 		
-		self.novel.gamma = 1e-3
-		self.novel.nu = 1e-3
+		self.novel.gamma = self.gamma
+		self.novel.nu = self.nu
 		self.novel.kernel = 'rbf'
 		self.novel.verbose = True 
 	
@@ -256,7 +258,7 @@ class Learner():
 		self.novel.fit(self.sup_states)
 
 
-		self.saveModel()
+		# self.saveModel()
 
 
  	def getAction(self, state):
@@ -311,12 +313,11 @@ class Learner():
 		
 		# 	return self.clf.predict(state.T)
 
-	def askForHelp(self,img):
+	def askForHelp(self,state):
 		'''
 		Get the appropriate layer from the tensorflow net, and then apply it to the
-		input image. Predict the novelty based on the state
+		input image, precomputed in image  Predict the novelty based on the state
 		'''
-		TODO
 
 		###* MARKED FOR DELETION
 
