@@ -15,17 +15,18 @@ def compute_normalizing_value(name, ending, transform):
 	maxi = 0
 	number = 0
 	for img in os.listdir(name):
-			if img.find(ending) != -1:
-				im = transform(img)
-				for oimg in os.listdir(name):
-					if oimg.find(ending) != -1 and oimg != img:
-						oim = transform(oimg)
-						number += 1
-						maxi = max(maxi, np.norm(im - oim))
-						if mini >= 0:
-							mini = min(mini, np.norm(im - oim))
-						else:
-							mini = np.norm(im - oim)
+		if img.find(ending) != -1:
+			print img
+			im = transform(name+img)
+			for oimg in os.listdir(name):
+				if oimg.find(ending) != -1 and oimg != img:
+					oim = transform(name +oimg)
+					number += 1
+					maxi = max(maxi, np.linalg.norm(im - oim))
+					if mini >= 0:
+						mini = min(mini, np.linalg.norm(im - oim))
+					else:
+						mini = np.linalg.norm(im - oim)
 	return mini, maxi, number
 
 def normalize(im, min_val, max_val):
@@ -59,4 +60,6 @@ def transform_names_fromraw(image, othername):
 minraw, maxraw, number = compute_normalizing_value("./../data/validationunorg/", ".jpg", transform_rollout)
 minfeat, maxfeat, number = compute_normalizing_value("./../data/featurizedValidation/", ".m", transform_feature)
 
-total = compute_normalized_distances_raw_embed("./../data/validationunorg/", minraw, maxraw, "./../data/validationFC1", minfeat, maxfeat, transform_rollout, number, transform_names_fromraw, ending):
+total = compute_normalized_distances_raw_embed("./../data/validationunorg/", minraw, maxraw, "./../data/validationFC1", minfeat, maxfeat, transform_rollout, number, transform_names_fromraw, ending)
+
+print total
