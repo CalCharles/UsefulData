@@ -14,19 +14,21 @@ def compute_normalizing_value(name, ending, transform):
 	mini = -1
 	maxi = 0
 	number = 0
+	images = []
 	for img in os.listdir(name):
 		if img.find(ending) != -1:
-			print img
 			im = transform(name+img)
-			for oimg in os.listdir(name):
-				if oimg.find(ending) != -1 and oimg != img:
-					oim = transform(name +oimg)
-					number += 1
-					maxi = max(maxi, np.linalg.norm(im - oim))
-					if mini >= 0:
-						mini = min(mini, np.linalg.norm(im - oim))
-					else:
-						mini = np.linalg.norm(im - oim)
+			images.append(im)
+
+	for im in images:
+		for oim in images:
+			number += 1
+			maxi = max(maxi, np.linalg.norm(im - oim))
+			if mini >= 0:
+				mini = min(mini, np.linalg.norm(im - oim))
+			else:
+				mini = np.linalg.norm(im - oim)
+	print mini, maxi, number
 	return mini, maxi, number
 
 def normalize(im, min_val, max_val):
